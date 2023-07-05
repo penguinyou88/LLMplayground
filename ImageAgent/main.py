@@ -1,3 +1,6 @@
+'''
+Code adapted from https://nayakpplaban.medium.com/ask-questions-to-your-images-using-langchain-and-python-1aeb30f38751
+'''
 import openai
 from getpass import getpass
 
