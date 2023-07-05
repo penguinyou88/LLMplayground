@@ -16,7 +16,7 @@ from langchain import OpenAI, Wikipedia
 from langchain.agents.react.base import DocstoreExplorer
 
 # load openAI access keys
-os.environ['CURL_CA_BUNDLE'] = ''
+# os.environ['CURL_CA_BUNDLE'] = '' # use this if you are having SSL issue
 load_dotenv()
 model_name = os.getenv('OPENAI_MODEL')
 openai_api_base = os.getenv('OPENAI_API_BASE')
