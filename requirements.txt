@@ -3,3 +3,4 @@ openai
 transformers 
 tabulate 
 timm
+python-dotenv
