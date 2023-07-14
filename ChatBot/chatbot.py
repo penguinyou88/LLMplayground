@@ -36,10 +36,10 @@ prompt = ChatPromptTemplate.from_messages([
 
 # use azurechatopenAI
 llm = AzureChatOpenAI(
-    openai_api_key= openai_api_key,
+    openai_api_key=openai_api_key,
     temperature=0.7,
     deployment_name=model_name,
-    openai_api_base = openai_api_base,
+    openai_api_base=openai_api_base,
     openai_api_version=openai_api_version)
 
 memory = ConversationBufferMemory(return_messages=True)
