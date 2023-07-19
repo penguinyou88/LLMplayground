@@ -61,7 +61,7 @@ with gr.Blocks() as demo:
         out = gr.Textbox(label="Response", placeholder="")
     submit_btn = gr.Button("Submit")
     submit_btn.click(run_task, inputs=[inp, image_file], outputs=out)
-    examples = gr.Examples(examples=["Generate a caption for this image?", "Describe the image"], inputs=[inp])
+    examples = gr.Examples(examples=["Generate a caption for this image?", "What objects are present in the image?"], inputs=[inp])
 
 demo.launch()
 
