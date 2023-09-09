@@ -5,14 +5,11 @@ import os
 import openai
 import datetime
 import json
+from dotenv import load_dotenv
 
 
-# region ENV + SDK SETUP
-
-# Load environment variables
-ENV = dotenv.dotenv_values(".env")
-with st.sidebar.expander("Settings"):
-    st.write('Using Azure OpenAI')
+with st.sidebar.expander("OpenAI Type"):
+    st.write('Azure')
 
 # Set up the Open AI Client
 load_dotenv()
@@ -92,7 +89,7 @@ def generate_response(prompt):
     st.session_state["messages"].append({"role": "user", "content": prompt})
     try:
         completion = openai.ChatCompletion.create(
-            engine=ENV["AZURE_OPENAI_CHATGPT_DEPLOYMENT"],
+            engine=os.getenv('OPENAI_MODEL'),
             messages=st.session_state["messages"],
         )
         response = completion.choices[0].message.content
@@ -126,7 +123,7 @@ with container:
         )
         st.session_state["past"].append(user_input)
         st.session_state["generated"].append(output)
-        st.session_state["model_name"].append(ENV["AZURE_OPENAI_CHATGPT_DEPLOYMENT"])
+        st.session_state["model_name"].append(os.getenv('OPENAI_MODEL'))
         st.session_state["total_tokens"].append(total_tokens)
 
         # from https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/#pricing
