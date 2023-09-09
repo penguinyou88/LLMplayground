@@ -1,86 +1,153 @@
-'''
-Adpated from this example: https://huggingface.co/spaces/fffiloni/langchain-chat-with-pdf/blob/main/app.py
-'''
-
-import gradio as gr
-from langchain.document_loaders import OnlinePDFLoader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.llms import HuggingFaceHub
-from langchain.embeddings import HuggingFaceHubEmbeddings
-from langchain.vectorstores import Chroma
-from langchain.chains import RetrievalQA
+import streamlit as st
+from streamlit_chat import message
+import dotenv
+import os
+import openai
+import datetime
+import json
 
 
+# region ENV + SDK SETUP
 
-def loading_pdf():
-    return "Loading..."
+# Load environment variables
+ENV = dotenv.dotenv_values(".env")
+with st.sidebar.expander("Settings"):
+    st.write('Using Azure OpenAI')
 
-def pdf_changes(pdf_doc, repo_id):
-    
-    loader = OnlinePDFLoader(pdf_doc.name)
-    documents = loader.load()
-    text_splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0)
-    texts = text_splitter.split_documents(documents)
-    embeddings = HuggingFaceHubEmbeddings()
-    db = Chroma.from_documents(texts, embeddings)
-    retriever = db.as_retriever()
-    llm = HuggingFaceHub(repo_id=repo_id, model_kwargs={"temperature":0.1, "max_new_tokens":250})
-    global qa 
-    qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever, return_source_documents=True)
-    return "Ready"
+# Set up the Open AI Client
+load_dotenv()
+openai.api_type = "azure"
+openai.api_base = os.getenv('OPENAI_API_BASE')
+openai.api_version = os.getenv('OPENAI_API_VERSION')
+openai.api_key = os.getenv('API_KEY')
 
-def add_text(history, text):
-    history = history + [(text, None)]
-    return history, ""
+# endregion
 
-def bot(history):
-    response = infer(history[-1][0])
-    history[-1][1] = response['result']
-    return history
+# region PROMPT SETUP
 
-def infer(question):
-    
-    query = question
-    result = qa({"query": query})
-
-    return result
-
-css="""
-#col-container {max-width: 700px; margin-left: auto; margin-right: auto;}
+default_prompt = """
+You are an AI assistant  that helps users write concise\
+ reports on sources provided according to a user query.\
+ You will provide reasoning for your summaries and deductions by\
+ describing your thought process. You will highlight any conflicting\
+ information between or within sources. Greet the user by asking\
+ what they'd like to investigate.
 """
 
-title = """
-<div style="text-align: center;max-width: 700px;">
-    <h1>Chat with PDF</h1>
-    <p style="text-align: center;">Upload a .PDF from your computer, click the "Load PDF to LangChain" button, <br />
-    when everything is ready, you can start asking questions about the pdf ;)</p>
-    <a style="display:inline-block; margin-left: 1em" href="https://huggingface.co/spaces/fffiloni/langchain-chat-with-pdf?duplicate=true"><img src="https://img.shields.io/badge/-Duplicate%20Space%20to%20skip%20the%20queue-blue?labelColor=white&style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAP5JREFUOE+lk7FqAkEURY+ltunEgFXS2sZGIbXfEPdLlnxJyDdYB62sbbUKpLbVNhyYFzbrrA74YJlh9r079973psed0cvUD4A+4HoCjsA85X0Dfn/RBLBgBDxnQPfAEJgBY+A9gALA4tcbamSzS4xq4FOQAJgCDwV2CPKV8tZAJcAjMMkUe1vX+U+SMhfAJEHasQIWmXNN3abzDwHUrgcRGmYcgKe0bxrblHEB4E/pndMazNpSZGcsZdBlYJcEL9Afo75molJyM2FxmPgmgPqlWNLGfwZGG6UiyEvLzHYDmoPkDDiNm9JR9uboiONcBXrpY1qmgs21x1QwyZcpvxt9NS09PlsPAAAAAElFTkSuQmCC&logoWidth=14" alt="Duplicate Space"></a>
-</div>
-"""
+system_prompt = st.sidebar.text_area("System Prompt", default_prompt, height=200)
+seed_message = {"role": "system", "content": system_prompt}
+# endregion
 
+# region SESSION MANAGEMENT
+# Initialise session state variables
+if "generated" not in st.session_state:
+    st.session_state["generated"] = []
+if "past" not in st.session_state:
+    st.session_state["past"] = []
+if "messages" not in st.session_state:
+    st.session_state["messages"] = [seed_message]
+if "model_name" not in st.session_state:
+    st.session_state["model_name"] = []
+if "cost" not in st.session_state:
+    st.session_state["cost"] = []
+if "total_tokens" not in st.session_state:
+    st.session_state["total_tokens"] = []
+if "total_cost" not in st.session_state:
+    st.session_state["total_cost"] = 0.0
+# endregion
 
-with gr.Blocks(css=css) as demo:
-    with gr.Column(elem_id="col-container"):
-        gr.HTML(title)
-        
-        with gr.Column():
-            pdf_doc = gr.File(label="Load a pdf", file_types=['.pdf'], type="file")
-            repo_id = gr.Dropdown(label="LLM", choices=["google/flan-ul2", "OpenAssistant/oasst-sft-1-pythia-12b", "bigscience/bloomz"], value="google/flan-ul2")
-            with gr.Row():
-                langchain_status = gr.Textbox(label="Status", placeholder="", interactive=False)
-                load_pdf = gr.Button("Load pdf to langchain")
-        
-        chatbot = gr.Chatbot([], elem_id="chatbot").style(height=350)
-        question = gr.Textbox(label="Question", placeholder="Type your question and hit Enter ")
-        submit_btn = gr.Button("Send message")
-    #load_pdf.click(loading_pdf, None, langchain_status, queue=False)    
-    repo_id.change(pdf_changes, inputs=[pdf_doc, repo_id], outputs=[langchain_status], queue=False)
-    load_pdf.click(pdf_changes, inputs=[pdf_doc, repo_id], outputs=[langchain_status], queue=False)
-    question.submit(add_text, [chatbot, question], [chatbot, question]).then(
-        bot, chatbot, chatbot
+# region SIDEBAR SETUP
+
+counter_placeholder = st.sidebar.empty()
+counter_placeholder.write(
+    f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}"
+)
+clear_button = st.sidebar.button("Clear Conversation", key="clear")
+
+if clear_button:
+    st.session_state["generated"] = []
+    st.session_state["past"] = []
+    st.session_state["messages"] = [seed_message]
+    st.session_state["number_tokens"] = []
+    st.session_state["model_name"] = []
+    st.session_state["cost"] = []
+    st.session_state["total_cost"] = 0.0
+    st.session_state["total_tokens"] = []
+    counter_placeholder.write(
+        f"Total cost of this conversation: £{st.session_state['total_cost']:.5f}"
     )
-    submit_btn.click(add_text, [chatbot, question], [chatbot, question]).then(
-        bot, chatbot, chatbot
-    )
 
-demo.launch()
+
+download_conversation_button = st.sidebar.download_button(
+    "Download Conversation",
+    data=json.dumps(st.session_state["messages"]),
+    file_name=f"conversation.json",
+    mime="text/json",
+)
+
+# endregion
+
+
+def generate_response(prompt):
+    st.session_state["messages"].append({"role": "user", "content": prompt})
+    try:
+        completion = openai.ChatCompletion.create(
+            engine=ENV["AZURE_OPENAI_CHATGPT_DEPLOYMENT"],
+            messages=st.session_state["messages"],
+        )
+        response = completion.choices[0].message.content
+    except openai.error.APIError as e:
+        st.write(response)
+        response = f"The API could not handle this content: {str(e)}"
+    st.session_state["messages"].append({"role": "assistant", "content": response})
+
+    # print(st.session_state['messages'])
+    total_tokens = completion.usage.total_tokens
+    prompt_tokens = completion.usage.prompt_tokens
+    completion_tokens = completion.usage.completion_tokens
+    return response, total_tokens, prompt_tokens, completion_tokens
+
+
+st.title("Streamlit ChatGPT Demo")
+
+# container for chat history
+response_container = st.container()
+# container for text box
+container = st.container()
+
+with container:
+    with st.form(key="my_form", clear_on_submit=True):
+        user_input = st.text_area("You:", key="input", height=100)
+        submit_button = st.form_submit_button(label="Send")
+
+    if submit_button and user_input:
+        output, total_tokens, prompt_tokens, completion_tokens = generate_response(
+            user_input
+        )
+        st.session_state["past"].append(user_input)
+        st.session_state["generated"].append(output)
+        st.session_state["model_name"].append(ENV["AZURE_OPENAI_CHATGPT_DEPLOYMENT"])
+        st.session_state["total_tokens"].append(total_tokens)
+
+        # from https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/#pricing
+        cost = total_tokens * 0.001625 / 1000
+
+        st.session_state["cost"].append(cost)
+        st.session_state["total_cost"] += cost
+
+
+if st.session_state["generated"]:
+    with response_container:
+        for i in range(len(st.session_state["generated"])):
+            message(
+                st.session_state["past"][i],
+                is_user=True,
+                key=str(i) + "_user",
+                avatar_style="shapes",
+            )
+            message(
+                st.session_state["generated"][i], key=str(i), avatar_style="identicon"
+            )
+        counter_placeholder.write(
+            f"Total cost of this conversation: ${st.session_state['total_cost']:.5f}"
+        )
