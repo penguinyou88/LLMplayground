@@ -4,3 +4,4 @@ transformers
 tabulate 
 timm
 python-dotenv
+gradio
