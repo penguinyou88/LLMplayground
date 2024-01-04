@@ -9,7 +9,7 @@ from ImageAgent import ImageCaptionTool, ObjectDetectionTool
 
 # set openAI access
 load_dotenv()
-os.environ['CURL_CA_BUNDLE'] = '' # use this if you are having SSL issue
+os.environ['CURL_CA_BUNDLE'] = '' # use this if you are having SSL issue, requests = 2.27.1
 model_name = os.getenv('OPENAI_MODEL')
 openai_api_base = os.getenv('OPENAI_API_BASE')
 openai_api_key = os.getenv('API_KEY')
