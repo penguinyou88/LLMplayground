@@ -159,3 +159,5 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 ChatBot/rsconnect-python/
+ChatOwnFile/project_data_analysis.ipynb
+ChatOwnFile/response.csv
